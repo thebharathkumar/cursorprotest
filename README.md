@@ -76,22 +76,61 @@ curl -X POST http://localhost:8000/api/analyze \
   -F "job_description=We are looking for a senior Python developer..."
 ```
 
+## Deploy to Vercel
+
+This project is fully configured for **one-click deployment to Vercel**.
+
+### Option 1: Deploy via Vercel Dashboard
+
+1. Push this repo to GitHub
+2. Go to [vercel.com/new](https://vercel.com/new)
+3. Import the repository
+4. Vercel will auto-detect the configuration from `vercel.json`
+5. Click **Deploy** -- no environment variables needed
+
+### Option 2: Deploy via Vercel CLI
+
+```bash
+# Install Vercel CLI
+npm i -g vercel
+
+# Deploy (from the project root)
+vercel
+
+# Deploy to production
+vercel --prod
+```
+
+### How It Works on Vercel
+
+- **`public/index.html`** is served as a static file at the root URL (`/`)
+- **`api/index.py`** runs as a Python serverless function handling `/api/*` routes
+- **`vercel.json`** configures the routing between static files and the API
+- No server to manage -- scales automatically with Vercel's edge network
+
 ## Project Structure
 
 ```
 .
-├── app/
+├── api/                          # Vercel serverless functions
+│   ├── index.py                  # FastAPI app (Vercel entry point)
+│   ├── resume_parser.py          # PDF/DOCX text extraction
+│   └── ats_scorer.py             # ATS scoring engine
+├── public/
+│   └── index.html                # Static web UI (served by Vercel CDN)
+├── app/                          # Local development server
 │   ├── __init__.py
-│   ├── main.py                 # FastAPI application & routes
+│   ├── main.py                   # FastAPI app (local dev entry point)
 │   ├── services/
 │   │   ├── __init__.py
-│   │   ├── resume_parser.py    # PDF/DOCX text extraction
-│   │   └── ats_scorer.py       # ATS scoring engine
-│   ├── static/                 # Static assets
+│   │   ├── resume_parser.py      # PDF/DOCX text extraction
+│   │   └── ats_scorer.py         # ATS scoring engine
+│   ├── static/
 │   └── templates/
-│       └── index.html          # Web UI
-├── run.py                      # Entry point
-├── requirements.txt            # Python dependencies
+│       └── index.html            # Web UI template
+├── vercel.json                   # Vercel deployment configuration
+├── run.py                        # Local development entry point
+├── requirements.txt              # Python dependencies
 └── README.md
 ```
 

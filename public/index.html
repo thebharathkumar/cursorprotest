@@ -1,0 +1,912 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ATS Resume Scoring Agent</title>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --primary-light: #818cf8;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --bg: #0f172a;
+            --bg-card: #1e293b;
+            --bg-card-hover: #334155;
+            --text: #f1f5f9;
+            --text-muted: #94a3b8;
+            --border: #334155;
+            --shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 2rem 1.5rem;
+        }
+
+        /* Header */
+        .header {
+            text-align: center;
+            margin-bottom: 2.5rem;
+        }
+
+        .header h1 {
+            font-size: 2.25rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--primary-light), #a78bfa, #f472b6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 0.5rem;
+        }
+
+        .header p {
+            color: var(--text-muted);
+            font-size: 1.05rem;
+        }
+
+        /* Upload Section */
+        .upload-section {
+            background: var(--bg-card);
+            border: 2px dashed var(--border);
+            border-radius: 16px;
+            padding: 3rem 2rem;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .upload-section:hover,
+        .upload-section.dragover {
+            border-color: var(--primary);
+            background: rgba(99, 102, 241, 0.05);
+        }
+
+        .upload-section.dragover {
+            transform: scale(1.01);
+        }
+
+        .upload-icon {
+            width: 64px;
+            height: 64px;
+            margin: 0 auto 1rem;
+            background: linear-gradient(135deg, var(--primary), var(--primary-light));
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .upload-icon svg {
+            width: 32px;
+            height: 32px;
+            stroke: white;
+            fill: none;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        .upload-section h2 {
+            font-size: 1.25rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .upload-section p {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        .upload-section input[type="file"] {
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        .file-name {
+            margin-top: 1rem;
+            padding: 0.5rem 1rem;
+            background: rgba(99, 102, 241, 0.15);
+            border-radius: 8px;
+            font-size: 0.9rem;
+            display: none;
+            color: var(--primary-light);
+        }
+
+        .file-name.show {
+            display: inline-block;
+        }
+
+        /* Job Description (optional) */
+        .jd-section {
+            margin-top: 1.5rem;
+        }
+
+        .jd-toggle {
+            background: none;
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+        }
+
+        .jd-toggle:hover {
+            border-color: var(--primary);
+            color: var(--primary-light);
+        }
+
+        .jd-textarea-wrap {
+            display: none;
+            margin-top: 1rem;
+        }
+
+        .jd-textarea-wrap.show {
+            display: block;
+        }
+
+        .jd-textarea-wrap textarea {
+            width: 100%;
+            min-height: 120px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1rem;
+            color: var(--text);
+            font-family: inherit;
+            font-size: 0.9rem;
+            resize: vertical;
+            transition: border-color 0.2s;
+        }
+
+        .jd-textarea-wrap textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .jd-textarea-wrap textarea::placeholder {
+            color: var(--text-muted);
+        }
+
+        /* Analyze Button */
+        .analyze-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-top: 1.5rem;
+            padding: 0.85rem 2.5rem;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
+        }
+
+        .analyze-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(99, 102, 241, 0.5);
+        }
+
+        .analyze-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Loading State */
+        .loader {
+            display: none;
+            margin: 2rem auto;
+            text-align: center;
+        }
+
+        .loader.show {
+            display: block;
+        }
+
+        .spinner {
+            width: 48px;
+            height: 48px;
+            border: 4px solid var(--border);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 1rem;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loader p {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+        }
+
+        /* Results Section */
+        .results {
+            display: none;
+            margin-top: 2.5rem;
+            animation: fadeInUp 0.5s ease;
+        }
+
+        .results.show {
+            display: block;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Score Circle */
+        .score-hero {
+            text-align: center;
+            padding: 2.5rem;
+            background: var(--bg-card);
+            border-radius: 20px;
+            box-shadow: var(--shadow);
+            margin-bottom: 2rem;
+        }
+
+        .score-circle-wrap {
+            position: relative;
+            width: 180px;
+            height: 180px;
+            margin: 0 auto 1.5rem;
+        }
+
+        .score-circle-bg {
+            fill: none;
+            stroke: var(--border);
+            stroke-width: 10;
+        }
+
+        .score-circle-fg {
+            fill: none;
+            stroke-width: 10;
+            stroke-linecap: round;
+            transform: rotate(-90deg);
+            transform-origin: center;
+            transition: stroke-dashoffset 1.5s ease, stroke 0.5s;
+        }
+
+        .score-value {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+        }
+
+        .score-value .number {
+            font-size: 3rem;
+            font-weight: 800;
+            line-height: 1;
+        }
+
+        .score-value .grade {
+            font-size: 1.1rem;
+            color: var(--text-muted);
+            margin-top: 0.25rem;
+        }
+
+        .score-label {
+            font-size: 1.1rem;
+            color: var(--text-muted);
+        }
+
+        .score-summary {
+            margin-top: 1rem;
+            font-size: 0.95rem;
+            color: var(--text-muted);
+            line-height: 1.7;
+            text-align: left;
+            white-space: pre-line;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        /* Category Cards */
+        .categories-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .category-card {
+            background: var(--bg-card);
+            border-radius: 14px;
+            padding: 1.25rem;
+            transition: all 0.2s;
+            cursor: pointer;
+            border: 1px solid transparent;
+        }
+
+        .category-card:hover {
+            background: var(--bg-card-hover);
+            border-color: var(--border);
+        }
+
+        .category-card.expanded .card-details {
+            display: block;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.75rem;
+        }
+
+        .card-header h3 {
+            font-size: 0.95rem;
+            font-weight: 600;
+        }
+
+        .card-header .card-score {
+            font-size: 0.85rem;
+            font-weight: 700;
+            padding: 0.2rem 0.6rem;
+            border-radius: 6px;
+        }
+
+        .card-score.high {
+            background: rgba(16, 185, 129, 0.15);
+            color: #34d399;
+        }
+        .card-score.medium {
+            background: rgba(245, 158, 11, 0.15);
+            color: #fbbf24;
+        }
+        .card-score.low {
+            background: rgba(239, 68, 68, 0.15);
+            color: #f87171;
+        }
+
+        .card-bar {
+            width: 100%;
+            height: 6px;
+            background: var(--border);
+            border-radius: 3px;
+            overflow: hidden;
+            margin-bottom: 0.5rem;
+        }
+
+        .card-bar-fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 1s ease;
+        }
+
+        .card-bar-fill.high { background: var(--success); }
+        .card-bar-fill.medium { background: var(--warning); }
+        .card-bar-fill.low { background: var(--danger); }
+
+        .card-weight {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .card-details {
+            display: none;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border);
+        }
+
+        .card-details p {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-bottom: 0.75rem;
+        }
+
+        .detail-list {
+            list-style: none;
+            font-size: 0.85rem;
+        }
+
+        .detail-list li {
+            padding: 0.3rem 0;
+            padding-left: 1.25rem;
+            position: relative;
+        }
+
+        .detail-list li::before {
+            position: absolute;
+            left: 0;
+            font-size: 0.8rem;
+        }
+
+        .detail-list.suggestions li { color: #fbbf24; }
+        .detail-list.suggestions li::before { content: "!"; color: #f59e0b; }
+
+        .detail-list.warnings li { color: #f87171; }
+        .detail-list.warnings li::before { content: "\2716"; color: #ef4444; }
+
+        .detail-list.good li { color: #34d399; }
+        .detail-list.good li::before { content: "\2714"; color: #10b981; }
+
+        /* Feedback panels */
+        .feedback-section {
+            margin-bottom: 2rem;
+        }
+
+        .feedback-section h3 {
+            font-size: 1.1rem;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .feedback-panel {
+            background: var(--bg-card);
+            border-radius: 14px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .feedback-panel h4 {
+            font-size: 0.95rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .feedback-panel ul {
+            list-style: none;
+            font-size: 0.9rem;
+        }
+
+        .feedback-panel ul li {
+            padding: 0.4rem 0;
+            padding-left: 1.5rem;
+            position: relative;
+            color: var(--text-muted);
+        }
+
+        .feedback-panel ul li::before {
+            position: absolute;
+            left: 0;
+        }
+
+        .panel-strengths h4 { color: #34d399; }
+        .panel-strengths ul li::before { content: "\2714"; color: #10b981; }
+
+        .panel-suggestions h4 { color: #fbbf24; }
+        .panel-suggestions ul li::before { content: "\279C"; color: #f59e0b; }
+
+        .panel-warnings h4 { color: #f87171; }
+        .panel-warnings ul li::before { content: "\26A0"; color: #ef4444; }
+
+        /* Error state */
+        .error-msg {
+            display: none;
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            border-radius: 12px;
+            padding: 1rem 1.5rem;
+            margin-top: 1rem;
+            color: #f87171;
+            font-size: 0.9rem;
+        }
+
+        .error-msg.show {
+            display: block;
+        }
+
+        /* Reset button */
+        .reset-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-top: 1rem;
+            padding: 0.65rem 1.5rem;
+            background: transparent;
+            color: var(--text-muted);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .reset-btn:hover {
+            color: var(--text);
+            border-color: var(--text-muted);
+        }
+
+        /* Responsive */
+        @media (max-width: 640px) {
+            .container {
+                padding: 1rem;
+            }
+            .header h1 {
+                font-size: 1.75rem;
+            }
+            .upload-section {
+                padding: 2rem 1rem;
+            }
+            .score-circle-wrap {
+                width: 150px;
+                height: 150px;
+            }
+            .score-value .number {
+                font-size: 2.5rem;
+            }
+            .categories-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <h1>ATS Resume Scoring Agent</h1>
+            <p>Upload your resume to get an instant ATS compatibility analysis with actionable feedback</p>
+        </header>
+
+        <!-- Upload Area -->
+        <div class="upload-section" id="uploadArea">
+            <div class="upload-icon">
+                <svg viewBox="0 0 24 24">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points="17 8 12 3 7 8"/>
+                    <line x1="12" y1="3" x2="12" y2="15"/>
+                </svg>
+            </div>
+            <h2>Drop your resume here</h2>
+            <p>or click to browse &mdash; PDF or DOCX accepted</p>
+            <input type="file" id="fileInput" accept=".pdf,.docx">
+            <div class="file-name" id="fileName"></div>
+        </div>
+
+        <!-- Optional Job Description -->
+        <div class="jd-section" style="text-align: center;">
+            <button class="jd-toggle" id="jdToggle">+ Add Job Description (optional, for keyword matching)</button>
+            <div class="jd-textarea-wrap" id="jdWrap">
+                <textarea id="jobDescription" placeholder="Paste the job description here to get targeted keyword matching analysis..."></textarea>
+            </div>
+        </div>
+
+        <!-- Analyze Button -->
+        <div style="text-align: center;">
+            <button class="analyze-btn" id="analyzeBtn" disabled>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                </svg>
+                Analyze Resume
+            </button>
+        </div>
+
+        <!-- Error -->
+        <div class="error-msg" id="errorMsg"></div>
+
+        <!-- Loading -->
+        <div class="loader" id="loader">
+            <div class="spinner"></div>
+            <p>Analyzing your resume against ATS criteria...</p>
+        </div>
+
+        <!-- Results -->
+        <div class="results" id="results">
+            <!-- Score Hero -->
+            <div class="score-hero">
+                <div class="score-circle-wrap">
+                    <svg viewBox="0 0 180 180" width="180" height="180">
+                        <circle cx="90" cy="90" r="78" class="score-circle-bg"/>
+                        <circle cx="90" cy="90" r="78" class="score-circle-fg" id="scoreCircle"
+                            stroke-dasharray="490" stroke-dashoffset="490"/>
+                    </svg>
+                    <div class="score-value">
+                        <div class="number" id="scoreNumber">0</div>
+                        <div class="grade" id="scoreGrade"></div>
+                    </div>
+                </div>
+                <div class="score-label">ATS Compatibility Score</div>
+                <div class="score-summary" id="scoreSummary"></div>
+            </div>
+
+            <!-- Category Scores -->
+            <div class="categories-grid" id="categoriesGrid"></div>
+
+            <!-- Detailed Feedback -->
+            <div class="feedback-section" id="feedbackSection"></div>
+
+            <!-- Reset -->
+            <div style="text-align: center;">
+                <button class="reset-btn" id="resetBtn">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>
+                    </svg>
+                    Analyze Another Resume
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const fileInput = document.getElementById('fileInput');
+        const uploadArea = document.getElementById('uploadArea');
+        const fileNameEl = document.getElementById('fileName');
+        const jdToggle = document.getElementById('jdToggle');
+        const jdWrap = document.getElementById('jdWrap');
+        const jobDescription = document.getElementById('jobDescription');
+        const analyzeBtn = document.getElementById('analyzeBtn');
+        const loader = document.getElementById('loader');
+        const results = document.getElementById('results');
+        const errorMsg = document.getElementById('errorMsg');
+        const resetBtn = document.getElementById('resetBtn');
+
+        let selectedFile = null;
+
+        // Drag & drop
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            if (e.dataTransfer.files.length) {
+                handleFile(e.dataTransfer.files[0]);
+            }
+        });
+
+        fileInput.addEventListener('change', () => {
+            if (fileInput.files.length) {
+                handleFile(fileInput.files[0]);
+            }
+        });
+
+        function handleFile(file) {
+            const ext = file.name.split('.').pop().toLowerCase();
+            if (!['pdf', 'docx'].includes(ext)) {
+                showError('Please upload a PDF or DOCX file.');
+                return;
+            }
+            selectedFile = file;
+            fileNameEl.textContent = file.name;
+            fileNameEl.classList.add('show');
+            analyzeBtn.disabled = false;
+            hideError();
+        }
+
+        // Job description toggle
+        jdToggle.addEventListener('click', () => {
+            jdWrap.classList.toggle('show');
+            jdToggle.textContent = jdWrap.classList.contains('show')
+                ? '- Hide Job Description'
+                : '+ Add Job Description (optional, for keyword matching)';
+        });
+
+        // Analyze
+        analyzeBtn.addEventListener('click', async () => {
+            if (!selectedFile) return;
+
+            results.classList.remove('show');
+            hideError();
+            loader.classList.add('show');
+            analyzeBtn.disabled = true;
+
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+
+            const jd = jobDescription.value.trim();
+            if (jd) {
+                formData.append('job_description', jd);
+            }
+
+            try {
+                const resp = await fetch('/api/analyze', {
+                    method: 'POST',
+                    body: formData,
+                });
+
+                if (!resp.ok) {
+                    const err = await resp.json();
+                    throw new Error(err.detail || 'Analysis failed');
+                }
+
+                const data = await resp.json();
+                renderResults(data);
+            } catch (err) {
+                showError(err.message || 'Something went wrong. Please try again.');
+            } finally {
+                loader.classList.remove('show');
+                analyzeBtn.disabled = false;
+            }
+        });
+
+        // Reset
+        resetBtn.addEventListener('click', () => {
+            results.classList.remove('show');
+            selectedFile = null;
+            fileInput.value = '';
+            fileNameEl.classList.remove('show');
+            analyzeBtn.disabled = true;
+            jobDescription.value = '';
+            jdWrap.classList.remove('show');
+            jdToggle.textContent = '+ Add Job Description (optional, for keyword matching)';
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+
+        function showError(msg) {
+            errorMsg.textContent = msg;
+            errorMsg.classList.add('show');
+        }
+
+        function hideError() {
+            errorMsg.classList.remove('show');
+        }
+
+        function getScoreClass(score) {
+            if (score >= 70) return 'high';
+            if (score >= 45) return 'medium';
+            return 'low';
+        }
+
+        function getScoreColor(score) {
+            if (score >= 70) return '#10b981';
+            if (score >= 45) return '#f59e0b';
+            return '#ef4444';
+        }
+
+        function renderResults(data) {
+            // Score circle animation
+            const circle = document.getElementById('scoreCircle');
+            const circumference = 2 * Math.PI * 78; // ~490
+            const offset = circumference - (data.overall_score / 100) * circumference;
+            circle.style.stroke = getScoreColor(data.overall_score);
+            circle.setAttribute('stroke-dasharray', circumference);
+            // Trigger animation
+            requestAnimationFrame(() => {
+                circle.style.strokeDashoffset = offset;
+            });
+
+            // Animate number
+            animateNumber('scoreNumber', 0, Math.round(data.overall_score), 1200);
+            document.getElementById('scoreGrade').textContent = `Grade: ${data.grade}`;
+            document.getElementById('scoreSummary').textContent = data.summary;
+
+            // Category cards
+            const grid = document.getElementById('categoriesGrid');
+            grid.innerHTML = '';
+
+            const categoryLabels = {
+                contact_info: { icon: '&#128100;' },
+                sections: { icon: '&#128196;' },
+                keywords: { icon: '&#128273;' },
+                formatting: { icon: '&#9881;' },
+                achievements: { icon: '&#127942;' },
+                action_verbs: { icon: '&#9889;' },
+                length: { icon: '&#128207;' },
+                readability: { icon: '&#128065;' },
+            };
+
+            for (const [key, cat] of Object.entries(data.category_scores)) {
+                const cls = getScoreClass(cat.score);
+                const meta = categoryLabels[key] || { icon: '' };
+
+                const card = document.createElement('div');
+                card.className = 'category-card';
+                card.onclick = () => card.classList.toggle('expanded');
+
+                let detailsHTML = `<p>${cat.details}</p>`;
+                if (cat.good && cat.good.length) {
+                    detailsHTML += `<ul class="detail-list good">${cat.good.map(g => `<li>${g}</li>`).join('')}</ul>`;
+                }
+                if (cat.suggestions && cat.suggestions.length) {
+                    detailsHTML += `<ul class="detail-list suggestions">${cat.suggestions.map(s => `<li>${s}</li>`).join('')}</ul>`;
+                }
+                if (cat.warnings && cat.warnings.length) {
+                    detailsHTML += `<ul class="detail-list warnings">${cat.warnings.map(w => `<li>${w}</li>`).join('')}</ul>`;
+                }
+
+                card.innerHTML = `
+                    <div class="card-header">
+                        <h3>${meta.icon} ${cat.label}</h3>
+                        <span class="card-score ${cls}">${cat.score}/100</span>
+                    </div>
+                    <div class="card-bar">
+                        <div class="card-bar-fill ${cls}" style="width: 0%"></div>
+                    </div>
+                    <div class="card-weight">Weight: ${cat.weight}%</div>
+                    <div class="card-details">${detailsHTML}</div>
+                `;
+
+                grid.appendChild(card);
+
+                // Animate bar
+                requestAnimationFrame(() => {
+                    card.querySelector('.card-bar-fill').style.width = cat.score + '%';
+                });
+            }
+
+            // Feedback panels
+            const feedbackSection = document.getElementById('feedbackSection');
+            feedbackSection.innerHTML = '';
+
+            if (data.strengths && data.strengths.length) {
+                feedbackSection.innerHTML += `
+                    <div class="feedback-panel panel-strengths">
+                        <h4>Strengths (${data.strengths.length})</h4>
+                        <ul>${data.strengths.map(s => `<li>${s}</li>`).join('')}</ul>
+                    </div>
+                `;
+            }
+            if (data.suggestions && data.suggestions.length) {
+                feedbackSection.innerHTML += `
+                    <div class="feedback-panel panel-suggestions">
+                        <h4>Recommendations (${data.suggestions.length})</h4>
+                        <ul>${data.suggestions.map(s => `<li>${s}</li>`).join('')}</ul>
+                    </div>
+                `;
+            }
+            if (data.warnings && data.warnings.length) {
+                feedbackSection.innerHTML += `
+                    <div class="feedback-panel panel-warnings">
+                        <h4>Issues to Fix (${data.warnings.length})</h4>
+                        <ul>${data.warnings.map(w => `<li>${w}</li>`).join('')}</ul>
+                    </div>
+                `;
+            }
+
+            results.classList.add('show');
+            results.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        function animateNumber(id, start, end, duration) {
+            const el = document.getElementById(id);
+            const range = end - start;
+            const startTime = performance.now();
+
+            function step(ts) {
+                const elapsed = ts - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                // Ease out cubic
+                const eased = 1 - Math.pow(1 - progress, 3);
+                el.textContent = Math.round(start + range * eased);
+                if (progress < 1) requestAnimationFrame(step);
+            }
+            requestAnimationFrame(step);
+        }
+    </script>
+</body>
+</html>
