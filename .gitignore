@@ -33,3 +33,5 @@ venv.bak/
 .DS_Store
 uploads/
 *.log
+test_*.py
+test_*.txt

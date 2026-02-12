@@ -1,0 +1,31 @@
+Alex Smith
+Software Developer
+alex.smith@email.com
+
+Summary
+I am a software developer looking for new opportunities.
+
+Experience
+
+Developer at ABC Company
+2020 - 2023
+I worked on various projects and helped with development tasks.
+Used different programming languages and tools.
+
+Intern at XYZ Corp
+2019 - 2020
+Assisted senior developers with coding.
+Learned about software development.
+
+Education
+
+Computer Science Degree
+University Name
+Graduated 2019
+
+Skills
+
+Programming
+Web Development
+Problem Solving
+Communication
