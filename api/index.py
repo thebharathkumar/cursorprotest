@@ -1,22 +1,16 @@
 """
-ATS Resume Scoring Agent - FastAPI Application
-Provides a web interface and API for analyzing resumes against ATS criteria.
+Vercel Serverless Function - ATS Resume Scoring Agent
+This is the entry point for the Vercel Python runtime.
+Vercel routes all /api/* requests to this FastAPI app.
 """
 
-import os
 from typing import Optional
 
-from fastapi import FastAPI, File, Form, UploadFile, HTTPException, Request
-from fastapi.responses import HTMLResponse
-from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
+from fastapi import FastAPI, File, Form, UploadFile, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 
-try:
-    from app.services.resume_parser import ResumeParser
-    from app.services.ats_scorer import ATSScorer
-except ImportError:
-    from api.resume_parser import ResumeParser
-    from api.ats_scorer import ATSScorer
+from api.resume_parser import ResumeParser
+from api.ats_scorer import ATSScorer
 
 # --- App Setup ---
 
@@ -26,13 +20,13 @@ app = FastAPI(
     version="1.0.0",
 )
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
-
-# Mount static files if any
-static_dir = os.path.join(BASE_DIR, "static")
-if os.path.isdir(static_dir):
-    app.mount("/static", StaticFiles(directory=static_dir), name="static")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Service instances
 parser = ResumeParser()
@@ -44,12 +38,6 @@ MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
 
 
 # --- Routes ---
-
-@app.get("/", response_class=HTMLResponse)
-async def home(request: Request):
-    """Serve the main upload page."""
-    return templates.TemplateResponse("index.html", {"request": request})
-
 
 @app.post("/api/analyze")
 async def analyze_resume(
