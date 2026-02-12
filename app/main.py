@@ -16,10 +16,12 @@ try:
     from app.services.resume_parser import ResumeParser
     from app.services.ats_scorer import ATSScorer
     from app.services.resume_generator import ResumeGenerator
+    from app.services.resume_enhancer import ResumeEnhancer
 except ImportError:
     from api.resume_parser import ResumeParser
     from api.ats_scorer import ATSScorer
     from api.resume_generator import ResumeGenerator
+    from api.resume_enhancer import ResumeEnhancer
 
 # --- App Setup ---
 
@@ -41,6 +43,7 @@ if os.path.isdir(static_dir):
 parser = ResumeParser()
 scorer = ATSScorer()
 generator = ResumeGenerator()
+enhancer = ResumeEnhancer()
 
 # --- Constants ---
 
@@ -124,7 +127,49 @@ async def analyze_resume(
             detail=f"An error occurred during scoring: {str(e)}",
         )
 
+    report["_parsed"] = {
+        "text": parsed["text"],
+        "sections": parsed["sections"],
+        "word_count": parsed["word_count"],
+        "format": parsed["format"],
+    }
+
     return report
+
+
+@app.post("/api/enhance")
+async def enhance_resume(
+    parsed_data: str = Form(...),
+    score_report: str = Form(...),
+    job_description: Optional[str] = Form(None),
+):
+    """Enhance a resume and return an improved PDF."""
+    try:
+        parsed = json.loads(parsed_data)
+        report = json.loads(score_report)
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=400, detail="Invalid JSON in request.")
+
+    jd = (job_description or "").strip() or None
+
+    try:
+        ctx = enhancer.enhance(parsed, report, jd)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Enhancement failed: {str(e)}")
+
+    try:
+        pdf_bytes = generator.generate(ctx, jd or "")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"PDF generation failed: {str(e)}")
+
+    safe_name = (ctx.get("full_name") or "Enhanced_Resume").strip().replace(" ", "_")
+    filename = f"{safe_name}_Enhanced_Resume.pdf"
+
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @app.post("/api/generate")

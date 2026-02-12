@@ -14,6 +14,7 @@ from fastapi.responses import Response
 from api.resume_parser import ResumeParser
 from api.ats_scorer import ATSScorer
 from api.resume_generator import ResumeGenerator
+from api.resume_enhancer import ResumeEnhancer
 
 # --- App Setup ---
 
@@ -35,6 +36,7 @@ app.add_middleware(
 parser = ResumeParser()
 scorer = ATSScorer()
 generator = ResumeGenerator()
+enhancer = ResumeEnhancer()
 
 # --- Constants ---
 
@@ -112,6 +114,14 @@ async def analyze_resume(
             detail=f"An error occurred during scoring: {str(e)}",
         )
 
+    # Include parsed data so the frontend can send it back for enhancement
+    report["_parsed"] = {
+        "text": parsed["text"],
+        "sections": parsed["sections"],
+        "word_count": parsed["word_count"],
+        "format": parsed["format"],
+    }
+
     return report
 
 
@@ -157,6 +167,57 @@ async def generate_resume(
 
     safe_name = ctx.get("full_name", "resume").strip().replace(" ", "_")
     filename = f"{safe_name}_Resume.pdf"
+
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@app.post("/api/enhance")
+async def enhance_resume(
+    parsed_data: str = Form(...),
+    score_report: str = Form(...),
+    job_description: Optional[str] = Form(None),
+):
+    """
+    Enhance an already-analysed resume and return an improved PDF.
+
+    - **parsed_data**: JSON string of the _parsed object returned by /api/analyze.
+    - **score_report**: JSON string of the score report returned by /api/analyze.
+    - **job_description**: (Optional) job description for keyword tailoring.
+
+    Returns a downloadable enhanced PDF.
+    """
+    try:
+        parsed = json.loads(parsed_data)
+        report = json.loads(score_report)
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=400, detail="Invalid JSON in request.")
+
+    jd = (job_description or "").strip() or None
+
+    # Build improved context from parsed resume + score feedback
+    try:
+        ctx = enhancer.enhance(parsed, report, jd)
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Enhancement failed: {str(e)}",
+        )
+
+    # Generate the improved PDF
+    try:
+        pdf_bytes = generator.generate(ctx, jd or "")
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"PDF generation failed: {str(e)}",
+        )
+
+    safe_name = (ctx.get("full_name") or "Enhanced_Resume").strip().replace(" ", "_")
+    filename = f"{safe_name}_Enhanced_Resume.pdf"
 
     return Response(
         content=pdf_bytes,
