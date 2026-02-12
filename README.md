@@ -2,6 +2,20 @@
 
 An intelligent agent that analyzes and scores resumes based on Applicant Tracking System (ATS) criteria.
 
+## Quick Demo
+
+Try the application with example resumes:
+
+```bash
+# Start the server
+./start.sh
+# or
+python main.py
+
+# Open browser to http://localhost:8000
+# Upload example_resumes/good_resume.txt or example_resumes/basic_resume.txt
+```
+
 ## Features
 
 - 📄 **Multi-format Support**: Upload resumes in PDF, DOCX, or TXT format
